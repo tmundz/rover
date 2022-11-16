@@ -4,8 +4,12 @@
 
 #include "Adafruit_VL53L0X.h"
 
-#include "PinDefinitionsAndMore.h"
+#define IR_RECEIVE_PIN 5
 #include <IRremote.hpp>
+#if !defined(STR_HELPER)
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+#endif
 
 Adafruit_VL53L0X lox = Adafruit_VL53L0X();
 
@@ -14,13 +18,23 @@ void setup() {
 
   IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK);
 
-  pinMode(5, OUTPUT);
-  pinMode(6, OUTPUT);
-  pinMode(9, OUTPUT);
+  pinMode(12, OUTPUT);
+  pinMode(11, OUTPUT);
   pinMode(10, OUTPUT);
+  pinMode(9, OUTPUT);
+  
+  Serial.println("Adafruit VL53L0X test");
+  if (!lox.begin()) {
+    Serial.println(F("Failed to boot VL53L0X"));
+    while(1);
+  }
+  // power 
+  Serial.println(F("VL53L0X API Simple Ranging example\n\n")); 
+
 }
 
 void loop() {
+  Serial.println("Step");
   if (IrReceiver.decode()) {
     
         IrReceiver.resume(); // Enable receiving of the next value
@@ -42,7 +56,7 @@ void loop() {
           coast();
         }
         
-    }
+   }
    Serial.println(lox.readRange());
    if(lox.readRange() <= 60){
      turnLeft(140);
@@ -66,30 +80,30 @@ int fracTo8Bit(float value){
 }
 
 void motorLeftForward(int speed){
-  analogWrite(5, speed);
-  digitalWrite(6, LOW);
+  analogWrite(10, speed);
+  digitalWrite(9, LOW);
 }
 
 void motorLeftReverse(int speed){
-  digitalWrite(5, LOW);
-  analogWrite(6, speed);
-}
-
-void motorRightForward(int speed){
   digitalWrite(9, LOW);
   analogWrite(10, speed);
 }
 
+void motorRightForward(int speed){
+  digitalWrite(11, LOW);
+  analogWrite(12, speed);
+}
+
 void motorRightReverse(int speed){
-  analogWrite(9, speed);
-  digitalWrite(10, LOW);
+  analogWrite(11, speed);
+  digitalWrite(12, LOW);
 }
 
 void coast(){
-  digitalWrite(5, LOW);
-  digitalWrite(6, LOW);
-  digitalWrite(9, LOW);
+  digitalWrite(12, LOW);
+  digitalWrite(11, LOW);
   digitalWrite(10, LOW);
+  digitalWrite(9, LOW);
 }
 
 void brake(){
