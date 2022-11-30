@@ -1,9 +1,8 @@
 #include "Adafruit_VL53L0X.h"
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include "Adafruit_TSL2591.h"
+#include "Adafruit_VEML7700.h"
 
-Adafruit_TSL2591 tsl = Adafruit_TSL2591(2591); // pass in a number for the sensor identifier (for your use later)
+Adafruit_VEML7700 veml = Adafruit_VEML7700();
 
 Adafruit_VL53L0X lox = Adafruit_VL53L0X();
 
@@ -18,26 +17,44 @@ void setup() {
 
   // wait until serial port opens for native USB devices
   while (! Serial) {
-    delay(1);
+    delay(10);
   }
   
   if (!lox.begin()) {
     Serial.println(F("Failed to boot VL53L0X"));
-    while(1);
+    //while(1);
+  } else {
+    Serial.println("Found a VL53L0X sensor");
   }
-  
-   if (tsl.begin()) 
-  {
-    Serial.println(F("Found a TSL2591 sensor"));
-  } 
-  else 
-  {
-    Serial.println(F("No sensor found ... check your wiring?"));
+
+  if (!veml.begin()) {
+    Serial.println("Sensor not found");
     while (1);
+  }else{
+    Serial.println("Sensor found");
   }
-    
-  /* Configure the sensor */
-  configureSensor();
+
+  Serial.print(F("Gain: "));
+  switch (veml.getGain()) {
+    case VEML7700_GAIN_1: Serial.println("1"); break;
+    case VEML7700_GAIN_2: Serial.println("2"); break;
+    case VEML7700_GAIN_1_4: Serial.println("1/4"); break;
+    case VEML7700_GAIN_1_8: Serial.println("1/8"); break;
+  }
+
+  Serial.print(F("Integration Time (ms): "));
+  switch (veml.getIntegrationTime()) {
+    case VEML7700_IT_25MS: Serial.println("25"); break;
+    case VEML7700_IT_50MS: Serial.println("50"); break;
+    case VEML7700_IT_100MS: Serial.println("100"); break;
+    case VEML7700_IT_200MS: Serial.println("200"); break;
+    case VEML7700_IT_400MS: Serial.println("400"); break;
+    case VEML7700_IT_800MS: Serial.println("800"); break;
+  }
+
+  veml.setLowThreshold(10000);
+  veml.setHighThreshold(20000);
+  veml.interruptEnable(true);
 
 }
 
@@ -45,11 +62,13 @@ void loop() {
   uint16_t distance = checkDistance();
   Serial.print("passed distance: ");
   Serial.println(distance);
+  delay(150);
   
-  uint16_t reading = simpleRead();
+  uint16_t reading = veml.readLux();
   Serial.print("Reading: ");
   Serial.println(reading);
   buzzerDynamic(reading);
+  delay(150);
 
 
   if(distance < 80){
@@ -58,7 +77,7 @@ void loop() {
     turnLeft(150);
     delay(600);
     coast();
-    uint16_t reading = simpleRead();
+    uint16_t reading = veml.readLux();
     Serial.print("Reading: ");
     Serial.println(reading);
     buzzerDynamic(reading);
@@ -70,7 +89,7 @@ void loop() {
       turnRight(150);
       delay(1200);
       coast();
-      uint16_t reading = simpleRead();
+      uint16_t reading = veml.readLux();
       Serial.print("Reading: ");
       Serial.println(reading);
       buzzerDynamic(reading);
@@ -80,7 +99,7 @@ void loop() {
         turnRight(150);
         delay(600);
         coast();
-        uint16_t reading = simpleRead();
+        uint16_t reading = veml.readLux();
         Serial.print("Reading: ");
         Serial.println(reading);
         buzzerDynamic(reading);
@@ -160,47 +179,10 @@ void moveForwards(int speed){
   motorRightForward(speed);
 }
 
-void configureSensor(void)
-{
-  // You can change the gain on the fly, to adapt to brighter/dimmer light situations
-  //tsl.setGain(TSL2591_GAIN_LOW);    // 1x gain (bright light)
-  tsl.setGain(TSL2591_GAIN_MED);      // 25x gain
-  //tsl.setGain(TSL2591_GAIN_HIGH);   // 428x gain
-  
-  // Changing the integration time gives you a longer time over which to sense light
-  // longer timelines are slower, but are good in very low light situtations!
-  //tsl.setTiming(TSL2591_INTEGRATIONTIME_100MS);  // shortest integration time (bright light)
-  // tsl.setTiming(TSL2591_INTEGRATIONTIME_200MS);
-  tsl.setTiming(TSL2591_INTEGRATIONTIME_300MS);
-  // tsl.setTiming(TSL2591_INTEGRATIONTIME_400MS);
-  // tsl.setTiming(TSL2591_INTEGRATIONTIME_500MS);
-  // tsl.setTiming(TSL2591_INTEGRATIONTIME_600MS);  // longest integration time (dim light)
-
-  /* Display the gain and integration time for reference sake */  
-  tsl2591Gain_t gain = tsl.getGain();
-  switch(gain)
-  {
-    case TSL2591_GAIN_LOW:
-      Serial.println(F("1x (Low)"));
-      break;
-    case TSL2591_GAIN_MED:
-      Serial.println(F("25x (Medium)"));
-      break;
-    case TSL2591_GAIN_HIGH:
-      Serial.println(F("428x (High)"));
-      break;
-    case TSL2591_GAIN_MAX:
-      Serial.println(F("9876x (Max)"));
-      break;
-  }
-  Serial.print  (F("Timing:       "));
-  Serial.print((tsl.getTiming() + 1) * 100, DEC); 
-  Serial.println(F(" ms"));
-}
 
 void buzzerDynamic(uint16_t reading){
-  reading = reading / 5;
-  int toneValue = -0.500277935 * reading + 1100.5002779;
+  reading = reading;
+  int toneValue = 1400 * reading + 400;
   int delayValue = 0.13896609227 * reading + 49.8610339077;
   tone(7, toneValue);
   delay(delayValue);
